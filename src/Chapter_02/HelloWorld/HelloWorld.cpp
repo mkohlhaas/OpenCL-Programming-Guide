@@ -7,6 +7,10 @@
 
 const int ARRAY_SIZE = 1024;
 
+cl_context createContext(cl_context_properties *properties, int type) {
+  return clCreateContextFromType(properties, type, NULL, NULL, NULL);
+}
+
 //  Create an OpenCL context on the first available platform using either a GPU or CPU depending on what is available.
 cl_context CreateContext() {
   // First, select an OpenCL platform to run on.  For this example, we simply choose the first available platform.
@@ -20,13 +24,13 @@ cl_context CreateContext() {
   }
   // Attempt to create a GPU-based context. If that fails, try to create a CPU-based context.
   cl_context_properties contextProperties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)firstPlatformId, 0};
-  cl_context context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_GPU, NULL, NULL, &errNum);
-  if (errNum) {
+  cl_context context = createContext(contextProperties, CL_DEVICE_TYPE_GPU);
+  if (!context) {
     std::cout << "Could not create GPU context, trying CPU..." << std::endl;
-    context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_CPU, NULL, NULL, &errNum);
-    if (errNum) {
-      std::cerr << "Failed to create an OpenCL GPU or CPU context." << std::endl;
-      return EXIT_SUCCESS;
+    context = createContext(contextProperties, CL_DEVICE_TYPE_CPU);
+    if (!context) {
+      std::cerr << "Couldn't create CPU context either. Bailing out!" << std::endl;
+      exit(EXIT_FAILURE);
     }
   }
   return context;
@@ -55,7 +59,7 @@ cl_command_queue CreateCommandQueue(cl_context context, cl_device_id *device) {
     return EXIT_SUCCESS;
   }
 
-  // In this example, we just choose the first available device.
+  // In this example, we just choose the first available device => devices[0].
   // In a real program, you would likely use all available devices or choose the highest performance device based on
   // OpenCL device queries
   cl_command_queue commandQueue = clCreateCommandQueueWithProperties(context, devices[0], 0, NULL);
@@ -107,7 +111,7 @@ bool CreateMemObjects(cl_context context, cl_mem memObjects[3], float *a, float 
   // Note usage of 'CL_MEM_COPY_HOST_PTR'.
   memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * ARRAY_SIZE, a, NULL);
   memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * ARRAY_SIZE, b, NULL);
-  memObjects[2] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * ARRAY_SIZE, NULL, NULL);
+  memObjects[2] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(float) * ARRAY_SIZE, NULL, NULL);
 
   if (!memObjects[0] || !memObjects[1] || !memObjects[2]) {
     std::cerr << "Error creating memory objects." << std::endl;
@@ -191,7 +195,7 @@ int main(int argc, char **argv) {
   }
 
   // Read the output buffer back to the Host.
-  errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0, ARRAY_SIZE * sizeof(float), result, 0, NULL, NULL);
+  errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_BLOCKING, 0, ARRAY_SIZE * sizeof(float), result, 0, NULL, NULL);
   if (errNum) {
     Cleanup(context, commandQueue, program, kernel, memObjects, "Error reading result buffer.", EXIT_FAILURE);
   }
