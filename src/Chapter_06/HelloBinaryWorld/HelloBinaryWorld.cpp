@@ -141,7 +141,7 @@ cl_program CreateProgramFromBinary(cl_context context, cl_device_id device, cons
   return program;
 }
 
-// Retreive program binary for all of the devices attached to the program an and store the one for the device passed in.
+// Retrieve program binary for all of the devices attached to the program an and store the one for the device passed in.
 bool SaveProgramBinary(cl_program program, cl_device_id device, const char *fileName) {
   // 1 - Query for number of devices attached to program
   cl_uint numDevices = 0;

@@ -58,7 +58,7 @@ __kernel  void OCL_SSSP_KERNEL1(__global int *vertexArray, __global int *edgeArr
 }
 
 ///
-/// This is part 2 of the Kernel from Algorithm 5 in the paper.  
+/// This is part 2 of the Kernel from Algorithm 5 in the paper.
 ///
 __kernel  void OCL_SSSP_KERNEL2(__global int *vertexArray, __global int *edgeArray, __global float *weightArray,
                                 __global int *maskArray, __global float *costArray, __global float *updatingCostArray,

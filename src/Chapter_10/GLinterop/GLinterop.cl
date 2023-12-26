@@ -1,7 +1,6 @@
-
-__kernel void init_vbo_kernel(__global float4 *vbo, int w, int h, int seq)
+kernel void init_vbo_kernel(global float4 *vbo, int w, int h, int seq)
 {
-    int gid = get_global_id(0);
+  int gid = get_global_id(0);
 	float4 linepts;
 	float f = 1.0f;
 	float a = (float)h/4.0f;
@@ -15,10 +14,10 @@ __kernel void init_vbo_kernel(__global float4 *vbo, int w, int h, int seq)
 	vbo[gid] = linepts;
 }
 
-__kernel void init_texture_kernel(__write_only image2d_t im, int w, int h, int seq )
+kernel void init_texture_kernel(write_only image2d_t im, int w, int h, int seq )
 {
 	int2 coord = { get_global_id(0), get_global_id(1) };
-	float4 color =  { 
+	float4 color =  {
 					  (float)coord.x/(float)w,
 					  (float)coord.y/(float)h,
 					  (float)abs(seq-w)/(float)w,
