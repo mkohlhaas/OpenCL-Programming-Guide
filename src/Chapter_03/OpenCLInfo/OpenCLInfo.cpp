@@ -1,5 +1,4 @@
 #include <CL/cl.h>
-#include <alloca.h>
 #include <iostream>
 
 // Display information for a particular platform.
@@ -12,7 +11,7 @@ void DisplayPlatformInfo(cl_platform_id id, cl_platform_info name, std::string s
     exit(EXIT_FAILURE);
   }
 
-  char *info = (char *)alloca(sizeof(char) * paramValueSize);
+  char info[paramValueSize];
   errNum = clGetPlatformInfo(id, name, paramValueSize, info, NULL);
   if (errNum) {
     std::cerr << "Failed to find OpenCL platform " << str << "." << std::endl;
@@ -46,7 +45,7 @@ public:
       exit(EXIT_FAILURE);
     }
 
-    T *info = (T *)alloca(sizeof(T) * paramValueSize);
+    T info[paramValueSize];
     errNum = clGetDeviceInfo(id, name, paramValueSize, info, NULL);
     if (errNum) {
       std::cerr << "Failed to find OpenCL device info " << str << "." << std::endl;

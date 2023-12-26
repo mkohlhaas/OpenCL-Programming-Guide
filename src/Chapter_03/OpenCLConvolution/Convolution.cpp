@@ -4,26 +4,28 @@
 #include <iostream>
 #include <string>
 
-const unsigned int inputSignalWidth = 8;
-const unsigned int inputSignalHeight = 8;
-
-cl_uint inputSignal[inputSignalWidth][inputSignalHeight] = {
-    {3, 1, 1, 4, 8, 2, 1, 3}, {4, 2, 1, 1, 2, 1, 2, 3}, {4, 4, 4, 4, 3, 2, 2, 2}, {9, 8, 3, 8, 9, 0, 0, 0},
-    {9, 3, 3, 9, 0, 0, 0, 0}, {0, 9, 0, 8, 0, 0, 0, 0}, {3, 0, 8, 8, 9, 4, 4, 4}, {5, 9, 8, 1, 8, 1, 1, 1}};
-
-const unsigned int outputSignalWidth = 6;
-const unsigned int outputSignalHeight = 6;
-
-cl_uint outputSignal[outputSignalWidth][outputSignalHeight];
+// clang-format off
+const unsigned int inputWidth = 8;
+cl_uint inputSignal[inputWidth][inputWidth] = {
+    {3, 1, 1, 4, 8, 2, 1, 3},
+    {4, 2, 1, 1, 2, 1, 2, 3},
+    {4, 4, 4, 4, 3, 2, 2, 2},
+    {9, 8, 3, 8, 9, 0, 0, 0},
+    {9, 3, 3, 9, 0, 0, 0, 0},
+    {0, 9, 0, 8, 0, 0, 0, 0},
+    {3, 0, 8, 8, 9, 4, 4, 4},
+    {5, 9, 8, 1, 8, 1, 1, 1}};
+// clang-format on
 
 const unsigned int maskWidth = 3;
-const unsigned int maskHeight = 3;
-
-cl_uint mask[maskWidth][maskHeight] = {
+cl_uint mask[maskWidth][maskWidth] = {
     {1, 1, 1},
     {1, 0, 1},
     {1, 1, 1},
 };
+
+const unsigned int outputWidth = 6;
+cl_uint outputSignal[outputWidth][outputWidth];
 
 inline void checkErr(cl_int err, const char *name) {
   if (err) {
@@ -42,21 +44,21 @@ int main(void) {
   // Select an OpenCL platform to run on.
   cl_uint numPlatforms;
   checkErr(clGetPlatformIDs(0, NULL, &numPlatforms), "clGetPlatformIDs");
-
-  cl_platform_id *platformIDs = (cl_platform_id *)alloca(sizeof(cl_platform_id) * numPlatforms);
+  cl_platform_id platformIDs[numPlatforms];
   checkErr(clGetPlatformIDs(numPlatforms, platformIDs, NULL), "clGetPlatformIDs");
 
   // Iterate through the list of platforms until we find one that supports a CPU device, otherwise fail with an error.
   cl_device_id *deviceIDs;
   cl_uint numDevices;
   cl_int errNum;
+  int deviceType = CL_DEVICE_TYPE_CPU;
   cl_uint i;
   for (i = 0; i < numPlatforms; i++) {
-    errNum = clGetDeviceIDs(platformIDs[i], CL_DEVICE_TYPE_CPU, 0, NULL, &numDevices);
+    errNum = clGetDeviceIDs(platformIDs[i], deviceType, 0, NULL, &numDevices);
     if (errNum)
       continue; // try next platform
-    deviceIDs = (cl_device_id *)alloca(sizeof(cl_device_id) * numDevices);
-    errNum = clGetDeviceIDs(platformIDs[i], CL_DEVICE_TYPE_CPU, numDevices, &deviceIDs[0], NULL);
+    cl_device_id deviceIDs[numDevices];
+    errNum = clGetDeviceIDs(platformIDs[i], deviceType, numDevices, &deviceIDs[0], NULL);
     if (!errNum)
       break; // we found a CPU device
   }
@@ -96,17 +98,16 @@ int main(void) {
 
   // Allocate buffers.
   cl_mem_flags flags = CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR;
-  size_t bufferSize = sizeof(cl_uint) * inputSignalHeight * inputSignalWidth;
+  size_t bufferSize = sizeof(cl_uint) * inputWidth * inputWidth;
   cl_mem inputSignalBuffer = clCreateBuffer(context, flags, bufferSize, static_cast<void *>(inputSignal), &errNum);
   checkErr(errNum, "clCreateBuffer(inputSignal)");
 
-  flags = CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR;
-  bufferSize = sizeof(cl_uint) * maskHeight * maskWidth;
+  bufferSize = sizeof(cl_uint) * maskWidth * maskWidth;
   cl_mem maskBuffer = clCreateBuffer(context, flags, bufferSize, static_cast<void *>(mask), &errNum);
   checkErr(errNum, "clCreateBuffer(mask)");
 
   flags = CL_MEM_WRITE_ONLY;
-  bufferSize = sizeof(cl_uint) * outputSignalHeight * outputSignalWidth;
+  bufferSize = sizeof(cl_uint) * outputWidth * outputWidth;
   cl_mem outputSignalBuffer = clCreateBuffer(context, flags, bufferSize, NULL, &errNum);
   checkErr(errNum, "clCreateBuffer(outputSignal)");
 
@@ -117,23 +118,23 @@ int main(void) {
   errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputSignalBuffer);
   errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &maskBuffer);
   errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &outputSignalBuffer);
-  errNum |= clSetKernelArg(kernel, 3, sizeof(cl_uint), &inputSignalWidth);
+  errNum |= clSetKernelArg(kernel, 3, sizeof(cl_uint), &inputWidth);
   errNum |= clSetKernelArg(kernel, 4, sizeof(cl_uint), &maskWidth);
   checkErr(errNum, "clSetKernelArg");
 
   // Queue the kernel up for execution across the array.
-  const size_t globalWorkSize[1] = {outputSignalWidth * outputSignalHeight};
+  const size_t globalWorkSize[2] = {outputWidth, outputWidth};
   const size_t localWorkSize[1] = {1};
   checkErr(clEnqueueNDRangeKernel(queue, kernel, 1, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL),
            "clEnqueueNDRangeKernel");
 
-  bufferSize = sizeof(cl_uint) * outputSignalHeight * outputSignalHeight;
-  checkErr(clEnqueueReadBuffer(queue, outputSignalBuffer, CL_TRUE, 0, bufferSize, outputSignal, 0, NULL, NULL),
+  bufferSize = sizeof(cl_uint) * outputWidth * outputWidth;
+  checkErr(clEnqueueReadBuffer(queue, outputSignalBuffer, CL_BLOCKING, 0, bufferSize, outputSignal, 0, NULL, NULL),
            "clEnqueueReadBuffer");
 
   // Output the result buffer.
-  for (int y = 0; y < outputSignalHeight; y++) {
-    for (int x = 0; x < outputSignalWidth; x++) {
+  for (int y = 0; y < outputWidth; y++) {
+    for (int x = 0; x < outputWidth; x++) {
       std::cout << outputSignal[x][y] << " ";
     }
     std::cout << std::endl;
